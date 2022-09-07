@@ -9,12 +9,11 @@
 #define LAYER1SIZE 2
 #define LAYER2SIZE 1
 #define NUMTRAININGSETS 4
-#define LEARNINGRATE 0.1f
+#define LEARNINGRATE 1.0f
 
 struct node
 {
 
-    double bias;
     double output;
     double delta;
 
@@ -117,7 +116,7 @@ static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, stru
     {
 
         struct node *nodeB = &layerB->nodes[j];
-        double activation = nodeB->bias;
+        double activation = 0.0f;
         unsigned int k;
 
         for (k = 0; k < layerA->size; k++)
@@ -185,8 +184,6 @@ static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct 
         struct node *nodeA = &layerA->nodes[j];
         unsigned int k;
 
-        nodeA->bias += nodeA->delta * LEARNINGRATE;
-
         for (k = 0; k < layerB->size; k++)
         {
 
@@ -204,7 +201,6 @@ static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct 
 static void node_init(struct node *node)
 {
 
-    node->bias = randomize();
     node->output = 0.0f;
     node->delta = 0.0f;
 
