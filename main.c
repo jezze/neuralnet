@@ -254,12 +254,12 @@ static void network_forwardprop(struct network *network, unsigned int index)
 static void network_forwardpass(struct network *network, double *inputs)
 {
 
-    unsigned int n;
+    unsigned int i;
 
     network_setinputs(network, inputs);
 
-    for (n = 0; n < network->nsize - 1; n++)
-        network_forwardprop(network, n);
+    for (i = 0; i < network->csize; i++)
+        network_forwardprop(network, i);
 
 }
 
@@ -312,12 +312,12 @@ static void network_backprop(struct network *network, unsigned int index, double
 static void network_backwardpass(struct network *network, double *outputs, double learningrate)
 {
 
-    unsigned int n;
+    unsigned int i;
 
     network_setoutputs(network, outputs);
 
-    for (n = network->nsize - 1; n > 0; n--)
-        network_backprop(network, n - 1, learningrate);
+    for (i = network->csize; i > 0; i--)
+        network_backprop(network, i - 1, learningrate);
 
 }
 
