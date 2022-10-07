@@ -86,8 +86,6 @@ static void validate1(struct network *network, double *inputs, double *outputs)
 {
 
     struct nodelayer *last = network_getnodelayer(network, network->nsize - 1);
-    double confidence;
-    double distance;
     unsigned int i;
 
     network_forwardpass(network, inputs);
@@ -100,13 +98,10 @@ static void validate1(struct network *network, double *inputs, double *outputs)
         struct node *node = nodelayer_getnode(last, i);
         double output = outputs[i];
 
-        confidence = node->output;
-        distance = fabs(confidence - output);
+        printf("  [%u] Expected result %f\n", i, output);
+        printf("  [%u] Actual result %f\n", i, node->output);
 
-        printf("  [%u] Expected %f\n", i, output);
-        printf("  [%u] Confidence %f\n", i, confidence);
-
-        if (distance < 0.5)
+        if (fabs(node->output - output) < 0.5)
             printf("  [%u] Prediction: Correct\n", i);
         else
             printf("  [%u] Prediction: Wrong\n", i);
