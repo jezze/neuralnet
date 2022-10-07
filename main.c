@@ -38,6 +38,8 @@ struct connectionlayer
 {
 
     struct connection *connections;
+    unsigned int lsize;
+    unsigned int rsize;
     unsigned int size;
 
 };
@@ -107,6 +109,20 @@ static void setinputs(struct nodelayer *layer, double *inputs)
 
 }
 
+static struct node *getnode(struct nodelayer *layer, unsigned int index)
+{
+
+    return &layer->nodes[index];
+
+}
+
+static struct connection *getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
+{
+
+    return &clayer->connections[bindex * clayer->rsize + aindex];
+
+}
+
 static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, struct connectionlayer *clayer)
 {
 
@@ -115,15 +131,15 @@ static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, stru
     for (j = 0; j < layerB->size; j++)
     {
 
-        struct node *nodeB = &layerB->nodes[j];
+        struct node *nodeB = getnode(layerB, j);
         double activation = 0.0f;
         unsigned int k;
 
         for (k = 0; k < layerA->size; k++)
         {
 
-            struct node *nodeA = &layerA->nodes[k];
-            struct connection *connection = &clayer->connections[k * layerB->size + j];
+            struct node *nodeA = getnode(layerA, k);
+            struct connection *connection = getconnection(clayer, k, j);
 
             activation += nodeA->output * connection->weight;
 
@@ -143,7 +159,7 @@ static void setoutputs(struct nodelayer *layer, double *outputs)
     for (j = 0; j < layer->size; j++)
     {
 
-        struct node *node = &layer->nodes[j];
+        struct node *node = getnode(layer, j);
         double error = outputs[j] - node->output;
 
         node->delta = error * sigmoid_derived(node->output);
@@ -157,40 +173,40 @@ static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct 
 
     unsigned int j;
 
-    for (j = 0; j < layerB->size; j++)
-    {
-
-        struct node *nodeB = &layerB->nodes[j];
-        double error = 0.0f;
-        unsigned int k;
-
-        for (k = 0; k < layerA->size; k++)
-        {
-
-            struct node *nodeA = &layerA->nodes[k];
-            struct connection *connection = &clayer->connections[j * layerA->size + k];
-
-            error += nodeA->delta * connection->weight;
-
-        }
-
-        nodeB->delta = error * sigmoid_derived(nodeB->output);
-
-    }
-
     for (j = 0; j < layerA->size; j++)
     {
 
-        struct node *nodeA = &layerA->nodes[j];
+        struct node *nodeA = getnode(layerA, j);
+        double error = 0.0f;
         unsigned int k;
 
         for (k = 0; k < layerB->size; k++)
         {
 
-            struct node *nodeB = &layerB->nodes[k];
-            struct connection *connection = &clayer->connections[k * layerA->size + j];
+            struct node *nodeB = getnode(layerB, k);
+            struct connection *connection = getconnection(clayer, j, k);
 
-            connection->weight += nodeB->output * nodeA->delta * LEARNINGRATE;
+            error += nodeB->delta * connection->weight;
+
+        }
+
+        nodeA->delta = error * sigmoid_derived(nodeA->output);
+
+    }
+
+    for (j = 0; j < layerB->size; j++)
+    {
+
+        struct node *nodeB = getnode(layerB, j);
+        unsigned int k;
+
+        for (k = 0; k < layerA->size; k++)
+        {
+
+            struct node *nodeA = getnode(layerA, k);
+            struct connection *connection = getconnection(clayer, k, j);
+
+            connection->weight += nodeA->output * nodeB->delta * LEARNINGRATE;
 
         }
 
@@ -242,11 +258,13 @@ static void connection_init(struct connection *connection)
 
 }
 
-static void connectionlayer_init(struct connectionlayer *layer, unsigned int size)
+static void connectionlayer_init(struct connectionlayer *layer, unsigned int lsize, unsigned int rsize)
 {
 
     layer->connections = 0;
-    layer->size = size;
+    layer->lsize = lsize;
+    layer->rsize = rsize;
+    layer->size = lsize * rsize;
 
 }
 
@@ -327,7 +345,7 @@ static void backwardpass(struct network *network, double *outputs)
     setoutputs(&network->nlayers[network->nsize - 1], outputs);
 
     for (n = network->nsize - 1; n > 0; n--)
-        backprop(&network->nlayers[n], &network->nlayers[n - 1], &network->clayers[n - 1]);
+        backprop(&network->nlayers[n - 1], &network->nlayers[n], &network->clayers[n - 1]);
 
 }
 
@@ -430,8 +448,8 @@ static void init(void)
     nodelayer_init(&nodelayers[0], LAYER0SIZE);
     nodelayer_init(&nodelayers[1], LAYER1SIZE);
     nodelayer_init(&nodelayers[2], LAYER2SIZE);
-    connectionlayer_init(&connectionlayers[0], LAYER0SIZE * LAYER1SIZE);
-    connectionlayer_init(&connectionlayers[1], LAYER1SIZE * LAYER2SIZE);
+    connectionlayer_init(&connectionlayers[0], LAYER0SIZE, LAYER1SIZE);
+    connectionlayer_init(&connectionlayers[1], LAYER1SIZE, LAYER2SIZE);
     network_init(&network, nodelayers, NUMNODELAYERS, connectionlayers, NUMCONNECTIONLAYERS);
 
 }
