@@ -22,7 +22,6 @@ static void connection_init(struct connection *connection)
 void connectionlayer_forwardpass(struct connectionlayer *layer)
 {
 
-    unsigned int a;
     unsigned int b;
 
     for (b = 0; b < layer->nlayerB->size; b++)
@@ -30,6 +29,7 @@ void connectionlayer_forwardpass(struct connectionlayer *layer)
 
         struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
         double activation = 0.0f;
+        unsigned int a;
 
         for (a = 0; a < layer->nlayerA->size; a++)
         {
@@ -51,13 +51,13 @@ void connectionlayer_backwardpass(struct connectionlayer *layer, double learning
 {
 
     unsigned int a;
-    unsigned int b;
 
     for (a = 0; a < layer->nlayerA->size; a++)
     {
 
         struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
         double error = 0.0f;
+        unsigned int b;
 
         for (b = 0; b < layer->nlayerB->size; b++)
         {
@@ -67,26 +67,11 @@ void connectionlayer_backwardpass(struct connectionlayer *layer, double learning
 
             error += nodeB->delta * connection->weight;
 
-        }
-
-        nodeA->delta = error * derived(nodeA->output);
-
-    }
-
-    for (a = 0; a < layer->nlayerA->size; a++)
-    {
-
-        struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
-
-        for (b = 0; b < layer->nlayerB->size; b++)
-        {
-
-            struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
-            struct connection *connection = connectionlayer_getconnection(layer, a, b);
-
             connection->weight += nodeA->output * nodeB->delta * learningrate;
 
         }
+
+        nodeA->delta = error * derived(nodeA->output);
 
     }
 

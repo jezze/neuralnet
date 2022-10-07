@@ -27,8 +27,9 @@ void nodelayer_setinputs(struct nodelayer *layer, double *inputs)
     {
 
         struct node *node = &layer->nodes[i];
+        double input = inputs[i];
 
-        node->output = inputs[i];
+        node->output = input;
 
     }
 
@@ -43,9 +44,9 @@ void nodelayer_setoutputs(struct nodelayer *layer, double *outputs)
     {
 
         struct node *node = nodelayer_getnode(layer, i);
-        double error = outputs[i] - node->output;
+        double output = outputs[i];
 
-        node->delta = error * derived(node->output);
+        node->delta = (output - node->output) * derived(node->output);
 
     }
 
