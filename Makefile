@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 BIN:=nn
-OBJ:=main.o
+OBJ:=main.o math.o node.o connection.o network.o
 LIBS:=-lm
 CFLAGS:=-Wall -Werror
 PREFIX:=/usr/local/bin
