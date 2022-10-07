@@ -66,7 +66,6 @@ void connectionlayer_backwardpass(struct connectionlayer *layer, double learning
             struct connection *connection = connectionlayer_getconnection(layer, a, b);
 
             error += nodeB->delta * connection->weight;
-
             connection->weight += nodeA->output * nodeB->delta * learningrate;
 
         }
