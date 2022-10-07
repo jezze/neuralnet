@@ -168,5 +168,6 @@ int main(int argc, const char **argv)
     xor_run();
 
     return 0;
+
 }
 
