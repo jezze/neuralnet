@@ -61,7 +61,7 @@ double sigmoid(double x)
 
 }
 
-double sigmoid_derived(double x)
+double derived(double x)
 {
 
     return x * (1 - x);
@@ -72,6 +72,34 @@ double randomize(void)
 {
 
     return ((double)rand()) / ((double)RAND_MAX);
+
+}
+
+static struct nodelayer *getnodelayer(struct network *network, unsigned int index)
+{
+
+    return &network->nlayers[index];
+
+}
+
+static struct connectionlayer *getconnectionlayer(struct network *network, unsigned int indexA, unsigned int indexB)
+{
+
+    return &network->clayers[indexA];
+
+}
+
+static struct node *getnode(struct nodelayer *layer, unsigned int index)
+{
+
+    return &layer->nodes[index];
+
+}
+
+static struct connection *getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
+{
+
+    return &clayer->connections[bindex * clayer->rsize + aindex];
 
 }
 
@@ -93,9 +121,10 @@ static void shuffle(unsigned int *a, unsigned int n)
 
 }
 
-static void setinputs(struct nodelayer *layer, double *inputs)
+static void setinputs(struct network *network, double *inputs)
 {
 
+    struct nodelayer *layer = getnodelayer(network, 0);
     unsigned int i;
 
     for (i = 0; i < layer->size; i++)
@@ -109,23 +138,12 @@ static void setinputs(struct nodelayer *layer, double *inputs)
 
 }
 
-static struct node *getnode(struct nodelayer *layer, unsigned int index)
+static void forwardprop(struct network *network, unsigned int indexA, unsigned int indexB)
 {
 
-    return &layer->nodes[index];
-
-}
-
-static struct connection *getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
-{
-
-    return &clayer->connections[bindex * clayer->rsize + aindex];
-
-}
-
-static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, struct connectionlayer *clayer)
-{
-
+    struct nodelayer *layerA = getnodelayer(network, indexA);
+    struct nodelayer *layerB = getnodelayer(network, indexB);
+    struct connectionlayer *clayer = getconnectionlayer(network, indexA, indexB);
     unsigned int a;
     unsigned int b;
 
@@ -151,9 +169,10 @@ static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, stru
 
 }
 
-static void setoutputs(struct nodelayer *layer, double *outputs)
+static void setoutputs(struct network *network, double *outputs)
 {
 
+    struct nodelayer *layer = getnodelayer(network, network->nsize - 1);
     unsigned int i;
 
     for (i = 0; i < layer->size; i++)
@@ -162,15 +181,18 @@ static void setoutputs(struct nodelayer *layer, double *outputs)
         struct node *node = getnode(layer, i);
         double error = outputs[i] - node->output;
 
-        node->delta = error * sigmoid_derived(node->output);
+        node->delta = error * derived(node->output);
 
     }
 
 }
 
-static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct connectionlayer *clayer)
+static void backprop(struct network *network, unsigned int indexA, unsigned int indexB)
 {
 
+    struct nodelayer *layerA = getnodelayer(network, indexA);
+    struct nodelayer *layerB = getnodelayer(network, indexB);
+    struct connectionlayer *clayer = getconnectionlayer(network, indexA, indexB);
     unsigned int a;
     unsigned int b;
 
@@ -190,7 +212,7 @@ static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct 
 
         }
 
-        nodeA->delta = error * sigmoid_derived(nodeA->output);
+        nodeA->delta = error * derived(nodeA->output);
 
     }
 
@@ -329,10 +351,10 @@ static void forwardpass(struct network *network, double *inputs)
 
     unsigned int n;
 
-    setinputs(&network->nlayers[0], inputs);
+    setinputs(network, inputs);
 
     for (n = 0; n < network->nsize; n++)
-        forwardprop(&network->nlayers[n], &network->nlayers[n + 1], &network->clayers[n]);
+        forwardprop(network, n, n + 1);
 
 }
 
@@ -341,10 +363,10 @@ static void backwardpass(struct network *network, double *outputs)
 
     unsigned int n;
 
-    setoutputs(&network->nlayers[network->nsize - 1], outputs);
+    setoutputs(network, outputs);
 
     for (n = network->nsize - 1; n > 0; n--)
-        backprop(&network->nlayers[n - 1], &network->nlayers[n], &network->clayers[n - 1]);
+        backprop(network, n - 1, n);
 
 }
 
