@@ -156,6 +156,79 @@ static void connection_init(struct connection *connection)
 
 }
 
+static void connectionlayer_forwardpass(struct connectionlayer *layer)
+{
+
+    unsigned int a;
+    unsigned int b;
+
+    for (b = 0; b < layer->nlayerB->size; b++)
+    {
+
+        struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
+        double activation = 0.0f;
+
+        for (a = 0; a < layer->nlayerA->size; a++)
+        {
+
+            struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
+            struct connection *connection = connectionlayer_getconnection(layer, a, b);
+
+            activation += nodeA->output * connection->weight;
+
+        }
+
+        nodeB->output = sigmoid(activation);
+
+    }
+
+}
+
+static void connectionlayer_backwardpass(struct connectionlayer *layer, double learningrate)
+{
+
+    unsigned int a;
+    unsigned int b;
+
+    for (a = 0; a < layer->nlayerA->size; a++)
+    {
+
+        struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
+        double error = 0.0f;
+
+        for (b = 0; b < layer->nlayerB->size; b++)
+        {
+
+            struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
+            struct connection *connection = connectionlayer_getconnection(layer, a, b);
+
+            error += nodeB->delta * connection->weight;
+
+        }
+
+        nodeA->delta = error * derived(nodeA->output);
+
+    }
+
+    for (a = 0; a < layer->nlayerA->size; a++)
+    {
+
+        struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
+
+        for (b = 0; b < layer->nlayerB->size; b++)
+        {
+
+            struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
+            struct connection *connection = connectionlayer_getconnection(layer, a, b);
+
+            connection->weight += nodeA->output * nodeB->delta * learningrate;
+
+        }
+
+    }
+
+}
+
 static void connectionlayer_init(struct connectionlayer *layer, struct nodelayer *layerA, struct nodelayer *layerB)
 {
 
@@ -222,35 +295,6 @@ static void network_setoutputs(struct network *network, double *outputs)
 
 }
 
-static void network_forwardprop(struct network *network, unsigned int index)
-{
-
-    struct connectionlayer *clayer = network_getconnectionlayer(network, index);
-    unsigned int a;
-    unsigned int b;
-
-    for (b = 0; b < clayer->nlayerB->size; b++)
-    {
-
-        struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
-        double activation = 0.0f;
-
-        for (a = 0; a < clayer->nlayerA->size; a++)
-        {
-
-            struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
-            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
-
-            activation += nodeA->output * connection->weight;
-
-        }
-
-        nodeB->output = sigmoid(activation);
-
-    }
-
-}
-
 static void network_forwardpass(struct network *network, double *inputs)
 {
 
@@ -259,51 +303,11 @@ static void network_forwardpass(struct network *network, double *inputs)
     network_setinputs(network, inputs);
 
     for (i = 0; i < network->csize; i++)
-        network_forwardprop(network, i);
-
-}
-
-static void network_backprop(struct network *network, unsigned int index, double learningrate)
-{
-
-    struct connectionlayer *clayer = network_getconnectionlayer(network, index);
-    unsigned int a;
-    unsigned int b;
-
-    for (a = 0; a < clayer->nlayerA->size; a++)
     {
 
-        struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
-        double error = 0.0f;
+        struct connectionlayer *layer = network_getconnectionlayer(network, i);
 
-        for (b = 0; b < clayer->nlayerB->size; b++)
-        {
-
-            struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
-            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
-
-            error += nodeB->delta * connection->weight;
-
-        }
-
-        nodeA->delta = error * derived(nodeA->output);
-
-    }
-
-    for (a = 0; a < clayer->nlayerA->size; a++)
-    {
-
-        struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
-
-        for (b = 0; b < clayer->nlayerB->size; b++)
-        {
-
-            struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
-            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
-
-            connection->weight += nodeA->output * nodeB->delta * learningrate;
-
-        }
+        connectionlayer_forwardpass(layer);
 
     }
 
@@ -317,7 +321,13 @@ static void network_backwardpass(struct network *network, double *outputs, doubl
     network_setoutputs(network, outputs);
 
     for (i = network->csize; i > 0; i--)
-        network_backprop(network, i - 1, learningrate);
+    {
+
+        struct connectionlayer *layer = network_getconnectionlayer(network, i - 1);
+
+        connectionlayer_backwardpass(layer, learningrate);
+
+    }
 
 }
 
