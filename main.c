@@ -6,16 +6,6 @@
 #include "connection.h"
 #include "network.h"
 
-#define NUMEPOCHS 10000
-#define NUMNODELAYERS 3
-#define NUMCONNECTIONLAYERS 2
-#define NUMTRAININGSETS 4
-#define LEARNINGRATE 1.0f
-
-static struct nodelayer nodelayers[NUMNODELAYERS];
-static struct connectionlayer connectionlayers[NUMCONNECTIONLAYERS];
-static struct network network;
-
 static void shuffle(unsigned int *a, unsigned int n)
 {
 
@@ -34,47 +24,29 @@ static void shuffle(unsigned int *a, unsigned int n)
 
 }
 
-static void train(struct network *network)
+static void train(struct network *network, double epocs, double learningrate, unsigned int *order, double *inputs, double *outputs, unsigned int sets)
 {
 
     struct nodelayer *inputlayer = network_getnodelayer(network, 0);
     struct nodelayer *outputlayer = network_getnodelayer(network, network->nsize - 1);
-
-    double training_inputs[NUMTRAININGSETS * 2] = {
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f
-    };
-    double training_outputs[NUMTRAININGSETS] = {
-        0.0f,
-        1.0f,
-        1.0f,
-        0.0f
-    };
-    unsigned int training_order[NUMTRAININGSETS];
     unsigned int epoch;
-    unsigned int i;
 
-    for (i = 0; i < NUMTRAININGSETS; i++)
-        training_order[i] = i;
-
-    for (epoch = 0; epoch < NUMEPOCHS; epoch++)
+    for (epoch = 0; epoch < epocs; epoch++)
     {
 
         unsigned int i;
 
-        shuffle(training_order, NUMTRAININGSETS);
+        shuffle(order, sets);
 
-        for (i = 0; i < NUMTRAININGSETS; i++)
+        for (i = 0; i < sets; i++)
         {
 
-            unsigned int setindex = training_order[i];
-            double *inputs = training_inputs + setindex * inputlayer->size;
-            double *outputs = training_outputs + setindex * outputlayer->size;
+            unsigned int setindex = order[i];
+            double *cinputs = inputs + setindex * inputlayer->size;
+            double *coutputs = outputs + setindex * outputlayer->size;
 
-            network_forwardpass(network, inputs);
-            network_backwardpass(network, outputs, LEARNINGRATE);
+            network_forwardpass(network, cinputs);
+            network_backwardpass(network, coutputs, learningrate);
 
         }
 
@@ -82,7 +54,32 @@ static void train(struct network *network)
 
 }
 
-static void validate1(struct network *network, double *inputs, double *outputs)
+static void xor_train(struct network *network, double epocs, double learningrate)
+{
+
+    double inputs[8] = {
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f
+    };
+    double outputs[4] = {
+        0.0f,
+        1.0f,
+        1.0f,
+        0.0f
+    };
+    unsigned int order[4];
+    unsigned int i;
+
+    for (i = 0; i < 4; i++)
+        order[i] = i;
+
+    train(network, epocs, learningrate, order, inputs, outputs, 4);
+
+}
+
+static void xor_validate1(struct network *network, double *inputs, double *outputs)
 {
 
     struct nodelayer *last = network_getnodelayer(network, network->nsize - 1);
@@ -110,7 +107,7 @@ static void validate1(struct network *network, double *inputs, double *outputs)
 
 }
 
-static void validate(struct network *network)
+static void xor_validate(struct network *network)
 {
 
     static double inputs1[2] = {
@@ -138,33 +135,37 @@ static void validate(struct network *network)
         1.0f
     };
 
-    validate1(network, inputs1, outputs1);
-    validate1(network, inputs2, outputs2);
-    validate1(network, inputs3, outputs3);
-    validate1(network, inputs4, outputs4);
+    xor_validate1(network, inputs1, outputs1);
+    xor_validate1(network, inputs2, outputs2);
+    xor_validate1(network, inputs3, outputs3);
+    xor_validate1(network, inputs4, outputs4);
 
 }
 
-static void init(void)
+static void xor_run(void)
 {
+
+    struct nodelayer nodelayers[3];
+    struct connectionlayer connectionlayers[2];
+    struct network network;
 
     nodelayer_init(&nodelayers[0], 2);
     nodelayer_init(&nodelayers[1], 2);
     nodelayer_init(&nodelayers[2], 1);
     connectionlayer_init(&connectionlayers[0], &nodelayers[0], &nodelayers[1]);
     connectionlayer_init(&connectionlayers[1], &nodelayers[1], &nodelayers[2]);
-    network_init(&network, nodelayers, NUMNODELAYERS, connectionlayers, NUMCONNECTIONLAYERS);
+    network_init(&network, nodelayers, 3, connectionlayers, 2);
+    network_create(&network);
+    xor_train(&network, 10000, 1.0f);
+    xor_validate(&network);
+    network_destroy(&network);
 
 }
 
 int main(int argc, const char **argv)
 {
 
-    init();
-    network_create(&network);
-    train(&network);
-    validate(&network);
-    network_destroy(&network);
+    xor_run();
 
     return 0;
 }
