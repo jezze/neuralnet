@@ -96,14 +96,14 @@ static void shuffle(unsigned int *a, unsigned int n)
 static void setinputs(struct nodelayer *layer, double *inputs)
 {
 
-    unsigned int j;
+    unsigned int i;
 
-    for (j = 0; j < layer->size; j++)
+    for (i = 0; i < layer->size; i++)
     {
 
-        struct node *node = &layer->nodes[j];
+        struct node *node = &layer->nodes[i];
 
-        node->output = inputs[j];
+        node->output = inputs[i];
 
     }
 
@@ -126,20 +126,20 @@ static struct connection *getconnection(struct connectionlayer *clayer, unsigned
 static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, struct connectionlayer *clayer)
 {
 
-    unsigned int j;
+    unsigned int a;
+    unsigned int b;
 
-    for (j = 0; j < layerB->size; j++)
+    for (b = 0; b < layerB->size; b++)
     {
 
-        struct node *nodeB = getnode(layerB, j);
+        struct node *nodeB = getnode(layerB, b);
         double activation = 0.0f;
-        unsigned int k;
 
-        for (k = 0; k < layerA->size; k++)
+        for (a = 0; a < layerA->size; a++)
         {
 
-            struct node *nodeA = getnode(layerA, k);
-            struct connection *connection = getconnection(clayer, k, j);
+            struct node *nodeA = getnode(layerA, a);
+            struct connection *connection = getconnection(clayer, a, b);
 
             activation += nodeA->output * connection->weight;
 
@@ -154,13 +154,13 @@ static void forwardprop(struct nodelayer *layerA, struct nodelayer *layerB, stru
 static void setoutputs(struct nodelayer *layer, double *outputs)
 {
 
-    unsigned int j;
+    unsigned int i;
 
-    for (j = 0; j < layer->size; j++)
+    for (i = 0; i < layer->size; i++)
     {
 
-        struct node *node = getnode(layer, j);
-        double error = outputs[j] - node->output;
+        struct node *node = getnode(layer, i);
+        double error = outputs[i] - node->output;
 
         node->delta = error * sigmoid_derived(node->output);
 
@@ -171,20 +171,20 @@ static void setoutputs(struct nodelayer *layer, double *outputs)
 static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct connectionlayer *clayer)
 {
 
-    unsigned int j;
+    unsigned int a;
+    unsigned int b;
 
-    for (j = 0; j < layerA->size; j++)
+    for (a = 0; a < layerA->size; a++)
     {
 
-        struct node *nodeA = getnode(layerA, j);
+        struct node *nodeA = getnode(layerA, a);
         double error = 0.0f;
-        unsigned int k;
 
-        for (k = 0; k < layerB->size; k++)
+        for (b = 0; b < layerB->size; b++)
         {
 
-            struct node *nodeB = getnode(layerB, k);
-            struct connection *connection = getconnection(clayer, j, k);
+            struct node *nodeB = getnode(layerB, b);
+            struct connection *connection = getconnection(clayer, a, b);
 
             error += nodeB->delta * connection->weight;
 
@@ -194,17 +194,16 @@ static void backprop(struct nodelayer *layerA, struct nodelayer *layerB, struct 
 
     }
 
-    for (j = 0; j < layerB->size; j++)
+    for (a = 0; a < layerA->size; a++)
     {
 
-        struct node *nodeB = getnode(layerB, j);
-        unsigned int k;
+        struct node *nodeA = getnode(layerA, a);
 
-        for (k = 0; k < layerA->size; k++)
+        for (b = 0; b < layerB->size; b++)
         {
 
-            struct node *nodeA = getnode(layerA, k);
-            struct connection *connection = getconnection(clayer, k, j);
+            struct node *nodeB = getnode(layerB, b);
+            struct connection *connection = getconnection(clayer, a, b);
 
             connection->weight += nodeA->output * nodeB->delta * LEARNINGRATE;
 
