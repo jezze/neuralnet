@@ -6,17 +6,17 @@
 #include "connection.h"
 #include "network.h"
 
+static struct connectionlayer *getconnectionlayer(struct network *network, unsigned int index)
+{
+
+    return &network->clayers[index];
+
+}
+
 struct nodelayer *network_getnodelayer(struct network *network, unsigned int index)
 {
 
     return &network->nlayers[index];
-
-}
-
-struct connectionlayer *network_getconnectionlayer(struct network *network, unsigned int index)
-{
-
-    return &network->clayers[index];
 
 }
 
@@ -31,7 +31,7 @@ void network_forwardpass(struct network *network, double *inputs)
     for (i = 0; i < network->csize; i++)
     {
 
-        struct connectionlayer *layer = network_getconnectionlayer(network, i);
+        struct connectionlayer *layer = getconnectionlayer(network, i);
 
         connectionlayer_forwardpass(layer);
 
@@ -50,7 +50,7 @@ void network_backwardpass(struct network *network, double *outputs, double learn
     for (i = network->csize; i > 0; i--)
     {
 
-        struct connectionlayer *layer = network_getconnectionlayer(network, i - 1);
+        struct connectionlayer *layer = getconnectionlayer(network, i - 1);
 
         connectionlayer_backwardpass(layer, learningrate);
 

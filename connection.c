@@ -5,7 +5,7 @@
 #include "node.h"
 #include "connection.h"
 
-struct connection *connectionlayer_getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
+static struct connection *getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
 {
 
     return &clayer->connections[bindex * clayer->nlayerB->size + aindex];
@@ -35,7 +35,7 @@ void connectionlayer_forwardpass(struct connectionlayer *layer)
         {
 
             struct node *nodeA = nodelayer_getnode(layer->nlayerA, a);
-            struct connection *connection = connectionlayer_getconnection(layer, a, b);
+            struct connection *connection = getconnection(layer, a, b);
 
             activation += nodeA->output * connection->weight;
 
@@ -63,7 +63,7 @@ void connectionlayer_backwardpass(struct connectionlayer *layer, double learning
         {
 
             struct node *nodeB = nodelayer_getnode(layer->nlayerB, b);
-            struct connection *connection = connectionlayer_getconnection(layer, a, b);
+            struct connection *connection = getconnection(layer, a, b);
 
             error += nodeB->delta * connection->weight;
             connection->weight += nodeA->output * nodeB->delta * learningrate;

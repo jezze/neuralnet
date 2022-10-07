@@ -14,7 +14,6 @@ struct connectionlayer
 
 };
 
-struct connection *connectionlayer_getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex);
 void connectionlayer_forwardpass(struct connectionlayer *layer);
 void connectionlayer_backwardpass(struct connectionlayer *layer, double learningrate);
 void connectionlayer_init(struct connectionlayer *layer, struct nodelayer *layerA, struct nodelayer *layerB);
