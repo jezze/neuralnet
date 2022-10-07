@@ -2,15 +2,6 @@
 #include <stdio.h>
 #include <math.h>
 
-#define NUMEPOCHS 10000
-#define NUMNODELAYERS 3
-#define NUMCONNECTIONLAYERS 2
-#define LAYER0SIZE 2
-#define LAYER1SIZE 2
-#define LAYER2SIZE 1
-#define NUMTRAININGSETS 4
-#define LEARNINGRATE 1.0f
-
 struct node
 {
 
@@ -38,8 +29,8 @@ struct connectionlayer
 {
 
     struct connection *connections;
-    unsigned int lsize;
-    unsigned int rsize;
+    struct nodelayer *nlayerA;
+    struct nodelayer *nlayerB;
     unsigned int size;
 
 };
@@ -75,31 +66,31 @@ double randomize(void)
 
 }
 
-static struct nodelayer *getnodelayer(struct network *network, unsigned int index)
+static struct nodelayer *network_getnodelayer(struct network *network, unsigned int index)
 {
 
     return &network->nlayers[index];
 
 }
 
-static struct connectionlayer *getconnectionlayer(struct network *network, unsigned int indexA, unsigned int indexB)
+static struct connectionlayer *network_getconnectionlayer(struct network *network, unsigned int index)
 {
 
-    return &network->clayers[indexA];
+    return &network->clayers[index];
 
 }
 
-static struct node *getnode(struct nodelayer *layer, unsigned int index)
+static struct node *nodelayer_getnode(struct nodelayer *layer, unsigned int index)
 {
 
     return &layer->nodes[index];
 
 }
 
-static struct connection *getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
+static struct connection *connectionlayer_getconnection(struct connectionlayer *clayer, unsigned int bindex, unsigned int aindex)
 {
 
-    return &clayer->connections[bindex * clayer->rsize + aindex];
+    return &clayer->connections[bindex * clayer->nlayerB->size + aindex];
 
 }
 
@@ -116,120 +107,6 @@ static void shuffle(unsigned int *a, unsigned int n)
 
         a[j] = a[i];
         a[i] = t;
-
-    }
-
-}
-
-static void setinputs(struct network *network, double *inputs)
-{
-
-    struct nodelayer *layer = getnodelayer(network, 0);
-    unsigned int i;
-
-    for (i = 0; i < layer->size; i++)
-    {
-
-        struct node *node = &layer->nodes[i];
-
-        node->output = inputs[i];
-
-    }
-
-}
-
-static void forwardprop(struct network *network, unsigned int indexA, unsigned int indexB)
-{
-
-    struct nodelayer *layerA = getnodelayer(network, indexA);
-    struct nodelayer *layerB = getnodelayer(network, indexB);
-    struct connectionlayer *clayer = getconnectionlayer(network, indexA, indexB);
-    unsigned int a;
-    unsigned int b;
-
-    for (b = 0; b < layerB->size; b++)
-    {
-
-        struct node *nodeB = getnode(layerB, b);
-        double activation = 0.0f;
-
-        for (a = 0; a < layerA->size; a++)
-        {
-
-            struct node *nodeA = getnode(layerA, a);
-            struct connection *connection = getconnection(clayer, a, b);
-
-            activation += nodeA->output * connection->weight;
-
-        }
-
-        nodeB->output = sigmoid(activation);
-
-    }
-
-}
-
-static void setoutputs(struct network *network, double *outputs)
-{
-
-    struct nodelayer *layer = getnodelayer(network, network->nsize - 1);
-    unsigned int i;
-
-    for (i = 0; i < layer->size; i++)
-    {
-
-        struct node *node = getnode(layer, i);
-        double error = outputs[i] - node->output;
-
-        node->delta = error * derived(node->output);
-
-    }
-
-}
-
-static void backprop(struct network *network, unsigned int indexA, unsigned int indexB)
-{
-
-    struct nodelayer *layerA = getnodelayer(network, indexA);
-    struct nodelayer *layerB = getnodelayer(network, indexB);
-    struct connectionlayer *clayer = getconnectionlayer(network, indexA, indexB);
-    unsigned int a;
-    unsigned int b;
-
-    for (a = 0; a < layerA->size; a++)
-    {
-
-        struct node *nodeA = getnode(layerA, a);
-        double error = 0.0f;
-
-        for (b = 0; b < layerB->size; b++)
-        {
-
-            struct node *nodeB = getnode(layerB, b);
-            struct connection *connection = getconnection(clayer, a, b);
-
-            error += nodeB->delta * connection->weight;
-
-        }
-
-        nodeA->delta = error * derived(nodeA->output);
-
-    }
-
-    for (a = 0; a < layerA->size; a++)
-    {
-
-        struct node *nodeA = getnode(layerA, a);
-
-        for (b = 0; b < layerB->size; b++)
-        {
-
-            struct node *nodeB = getnode(layerB, b);
-            struct connection *connection = getconnection(clayer, a, b);
-
-            connection->weight += nodeA->output * nodeB->delta * LEARNINGRATE;
-
-        }
 
     }
 
@@ -279,13 +156,13 @@ static void connection_init(struct connection *connection)
 
 }
 
-static void connectionlayer_init(struct connectionlayer *layer, unsigned int lsize, unsigned int rsize)
+static void connectionlayer_init(struct connectionlayer *layer, struct nodelayer *layerA, struct nodelayer *layerB)
 {
 
     layer->connections = 0;
-    layer->lsize = lsize;
-    layer->rsize = rsize;
-    layer->size = lsize * rsize;
+    layer->nlayerA = layerA;
+    layer->nlayerB = layerB;
+    layer->size = layerA->size * layerB->size;
 
 }
 
@@ -307,6 +184,140 @@ static void connectionlayer_destroy(struct connectionlayer *layer)
     free(layer->connections);
 
     layer->connections = 0;
+
+}
+
+static void network_setinputs(struct network *network, double *inputs)
+{
+
+    struct nodelayer *layer = network_getnodelayer(network, 0);
+    unsigned int i;
+
+    for (i = 0; i < layer->size; i++)
+    {
+
+        struct node *node = &layer->nodes[i];
+
+        node->output = inputs[i];
+
+    }
+
+}
+
+static void network_setoutputs(struct network *network, double *outputs)
+{
+
+    struct nodelayer *layer = network_getnodelayer(network, network->nsize - 1);
+    unsigned int i;
+
+    for (i = 0; i < layer->size; i++)
+    {
+
+        struct node *node = nodelayer_getnode(layer, i);
+        double error = outputs[i] - node->output;
+
+        node->delta = error * derived(node->output);
+
+    }
+
+}
+
+static void network_forwardprop(struct network *network, unsigned int index)
+{
+
+    struct connectionlayer *clayer = network_getconnectionlayer(network, index);
+    unsigned int a;
+    unsigned int b;
+
+    for (b = 0; b < clayer->nlayerB->size; b++)
+    {
+
+        struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
+        double activation = 0.0f;
+
+        for (a = 0; a < clayer->nlayerA->size; a++)
+        {
+
+            struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
+            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
+
+            activation += nodeA->output * connection->weight;
+
+        }
+
+        nodeB->output = sigmoid(activation);
+
+    }
+
+}
+
+static void network_forwardpass(struct network *network, double *inputs)
+{
+
+    unsigned int n;
+
+    network_setinputs(network, inputs);
+
+    for (n = 0; n < network->nsize - 1; n++)
+        network_forwardprop(network, n);
+
+}
+
+static void network_backprop(struct network *network, unsigned int index, double learningrate)
+{
+
+    struct connectionlayer *clayer = network_getconnectionlayer(network, index);
+    unsigned int a;
+    unsigned int b;
+
+    for (a = 0; a < clayer->nlayerA->size; a++)
+    {
+
+        struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
+        double error = 0.0f;
+
+        for (b = 0; b < clayer->nlayerB->size; b++)
+        {
+
+            struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
+            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
+
+            error += nodeB->delta * connection->weight;
+
+        }
+
+        nodeA->delta = error * derived(nodeA->output);
+
+    }
+
+    for (a = 0; a < clayer->nlayerA->size; a++)
+    {
+
+        struct node *nodeA = nodelayer_getnode(clayer->nlayerA, a);
+
+        for (b = 0; b < clayer->nlayerB->size; b++)
+        {
+
+            struct node *nodeB = nodelayer_getnode(clayer->nlayerB, b);
+            struct connection *connection = connectionlayer_getconnection(clayer, a, b);
+
+            connection->weight += nodeA->output * nodeB->delta * learningrate;
+
+        }
+
+    }
+
+}
+
+static void network_backwardpass(struct network *network, double *outputs, double learningrate)
+{
+
+    unsigned int n;
+
+    network_setoutputs(network, outputs);
+
+    for (n = network->nsize - 1; n > 0; n--)
+        network_backprop(network, n - 1, learningrate);
 
 }
 
@@ -346,40 +357,29 @@ static void network_destroy(struct network *network)
 
 }
 
-static void forwardpass(struct network *network, double *inputs)
-{
+#define NUMEPOCHS 10000
+#define NUMNODELAYERS 3
+#define NUMCONNECTIONLAYERS 2
+#define NUMTRAININGSETS 4
+#define LEARNINGRATE 1.0f
 
-    unsigned int n;
-
-    setinputs(network, inputs);
-
-    for (n = 0; n < network->nsize; n++)
-        forwardprop(network, n, n + 1);
-
-}
-
-static void backwardpass(struct network *network, double *outputs)
-{
-
-    unsigned int n;
-
-    setoutputs(network, outputs);
-
-    for (n = network->nsize - 1; n > 0; n--)
-        backprop(network, n - 1, n);
-
-}
+static struct nodelayer nodelayers[NUMNODELAYERS];
+static struct connectionlayer connectionlayers[NUMCONNECTIONLAYERS];
+static struct network network;
 
 static void train(struct network *network)
 {
 
-    double training_inputs[NUMTRAININGSETS * LAYER0SIZE] = {
+    struct nodelayer *inputlayer = network_getnodelayer(network, 0);
+    struct nodelayer *outputlayer = network_getnodelayer(network, network->nsize - 1);
+
+    double training_inputs[NUMTRAININGSETS * 2] = {
         0.0f, 0.0f,
         1.0f, 0.0f,
         0.0f, 1.0f,
         1.0f, 1.0f
     };
-    double training_outputs[NUMTRAININGSETS * LAYER2SIZE] = {
+    double training_outputs[NUMTRAININGSETS] = {
         0.0f,
         1.0f,
         1.0f,
@@ -403,11 +403,11 @@ static void train(struct network *network)
         {
 
             unsigned int setindex = training_order[i];
-            double *inputs = training_inputs + setindex * network->nlayers[0].size;
-            double *outputs = training_outputs + setindex * network->nlayers[2].size;
+            double *inputs = training_inputs + setindex * inputlayer->size;
+            double *outputs = training_outputs + setindex * outputlayer->size;
 
-            forwardpass(network, inputs);
-            backwardpass(network, outputs);
+            network_forwardpass(network, inputs);
+            network_backwardpass(network, outputs, LEARNINGRATE);
 
         }
 
@@ -415,18 +415,19 @@ static void train(struct network *network)
 
 }
 
-static void validatehelper(struct network *network, double *input, double answer)
+static void validatehelper(struct network *network, double *input, double *output)
 {
 
     double confidence;
     double distance;
 
-    forwardpass(network, input);
+    network_forwardpass(network, input);
 
     confidence = network->nlayers[2].nodes[0].output;
-    distance = fabs(confidence - answer);
+    distance = fabs(confidence - output[0]);
 
     printf("Validating test:\n");
+    printf("  Expected %f\n", output[0]);
     printf("  Confidence %f\n", confidence);
 
     if (distance < 0.5)
@@ -439,38 +440,46 @@ static void validatehelper(struct network *network, double *input, double answer
 static void validate(struct network *network)
 {
 
-    static double input1[LAYER0SIZE] = {
+    static double input1[2] = {
         0.0f, 0.0f
     };
-    static double input2[LAYER0SIZE] = {
+    static double input2[2] = {
         1.0f, 1.0f
     };
-    static double input3[LAYER0SIZE] = {
+    static double input3[2] = {
         1.0f, 0.0f
     };
-    static double input4[LAYER0SIZE] = {
+    static double input4[2] = {
         0.0f, 1.0f
     };
+    static double output1[1] = {
+        0.0f
+    };
+    static double output2[1] = {
+        0.0f
+    };
+    static double output3[1] = {
+        1.0f
+    };
+    static double output4[1] = {
+        1.0f
+    };
 
-    validatehelper(network, input1, 0.0f);
-    validatehelper(network, input2, 0.0f);
-    validatehelper(network, input3, 1.0f);
-    validatehelper(network, input4, 1.0f);
+    validatehelper(network, input1, output1);
+    validatehelper(network, input2, output2);
+    validatehelper(network, input3, output3);
+    validatehelper(network, input4, output4);
 
 }
-
-static struct nodelayer nodelayers[NUMNODELAYERS];
-static struct connectionlayer connectionlayers[NUMCONNECTIONLAYERS];
-static struct network network;
 
 static void init(void)
 {
 
-    nodelayer_init(&nodelayers[0], LAYER0SIZE);
-    nodelayer_init(&nodelayers[1], LAYER1SIZE);
-    nodelayer_init(&nodelayers[2], LAYER2SIZE);
-    connectionlayer_init(&connectionlayers[0], LAYER0SIZE, LAYER1SIZE);
-    connectionlayer_init(&connectionlayers[1], LAYER1SIZE, LAYER2SIZE);
+    nodelayer_init(&nodelayers[0], 2);
+    nodelayer_init(&nodelayers[1], 2);
+    nodelayer_init(&nodelayers[2], 1);
+    connectionlayer_init(&connectionlayers[0], &nodelayers[0], &nodelayers[1]);
+    connectionlayer_init(&connectionlayers[1], &nodelayers[1], &nodelayers[2]);
     network_init(&network, nodelayers, NUMNODELAYERS, connectionlayers, NUMCONNECTIONLAYERS);
 
 }
