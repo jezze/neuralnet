@@ -16,6 +16,24 @@ static struct nodelayer nodelayers[NUMNODELAYERS];
 static struct connectionlayer connectionlayers[NUMCONNECTIONLAYERS];
 static struct network network;
 
+static void shuffle(unsigned int *a, unsigned int n)
+{
+
+    unsigned int i;
+
+    for (i = 0; i < n - 1; i++)
+    {
+
+        unsigned int j = i + rand() / (RAND_MAX / (n - i) + 1);
+        unsigned int t = a[j];
+
+        a[j] = a[i];
+        a[i] = t;
+
+    }
+
+}
+
 static void train(struct network *network)
 {
 
@@ -64,60 +82,71 @@ static void train(struct network *network)
 
 }
 
-static void validatehelper(struct network *network, double *input, double *output)
+static void validate1(struct network *network, double *inputs, double *outputs)
 {
 
+    struct nodelayer *last = network_getnodelayer(network, network->nsize - 1);
     double confidence;
     double distance;
+    unsigned int i;
 
-    network_forwardpass(network, input);
-
-    confidence = network->nlayers[2].nodes[0].output;
-    distance = fabs(confidence - output[0]);
+    network_forwardpass(network, inputs);
 
     printf("Validating test:\n");
-    printf("  Expected %f\n", output[0]);
-    printf("  Confidence %f\n", confidence);
 
-    if (distance < 0.5)
-        printf("  Prediction: Correct\n");
-    else
-        printf("  Prediction: Wrong\n");
+    for (i = 0; i < last->size; i++)
+    {
+
+        struct node *node = nodelayer_getnode(last, i);
+        double output = outputs[i];
+
+        confidence = node->output;
+        distance = fabs(confidence - output);
+
+        printf("  [%u] Expected %f\n", i, output);
+        printf("  [%u] Confidence %f\n", i, confidence);
+
+        if (distance < 0.5)
+            printf("  [%u] Prediction: Correct\n", i);
+        else
+            printf("  [%u] Prediction: Wrong\n", i);
+
+    }
 
 }
 
 static void validate(struct network *network)
 {
 
-    static double input1[2] = {
+    static double inputs1[2] = {
         0.0f, 0.0f
     };
-    static double input2[2] = {
+    static double inputs2[2] = {
         1.0f, 1.0f
     };
-    static double input3[2] = {
+    static double inputs3[2] = {
         1.0f, 0.0f
     };
-    static double input4[2] = {
+    static double inputs4[2] = {
         0.0f, 1.0f
     };
-    static double output1[1] = {
+    static double outputs1[1] = {
         0.0f
     };
-    static double output2[1] = {
+    static double outputs2[1] = {
         0.0f
     };
-    static double output3[1] = {
+    static double outputs3[1] = {
         1.0f
     };
-    static double output4[1] = {
+    static double outputs4[1] = {
         1.0f
     };
 
-    validatehelper(network, input1, output1);
-    validatehelper(network, input2, output2);
-    validatehelper(network, input3, output3);
-    validatehelper(network, input4, output4);
+    validate1(network, inputs1, outputs1);
+    validate1(network, inputs2, outputs2);
+    validate1(network, inputs3, outputs3);
+    validate1(network, inputs4, outputs4);
 
 }
 

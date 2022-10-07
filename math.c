@@ -22,21 +22,3 @@ double randomize(void)
 
 }
 
-void shuffle(unsigned int *a, unsigned int n)
-{
-
-    unsigned int i;
-
-    for (i = 0; i < n - 1; i++)
-    {
-
-        unsigned int j = i + rand() / (RAND_MAX / (n - i) + 1);
-        unsigned int t = a[j];
-
-        a[j] = a[i];
-        a[i] = t;
-
-    }
-
-}
-
